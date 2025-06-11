@@ -75,6 +75,38 @@ export const useAuth = () => {
     }
   };
 
+  const handleEmailRegister = async (e: FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    if (!validateEmail(input)) {
+        setError("Invalid email format");
+        return;
+    }
+
+  setIsLoading(true);
+    try {
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: input }),
+      });
+
+      if (res.ok) {
+        navigate("/auth/email");
+      } else if (res.status === 422) {
+        setError("Invalid email format");
+      } else {
+        setError("Failed to register");
+      }
+    } catch {
+      setError("Network error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
   const handlePinSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
@@ -123,6 +155,7 @@ export const useAuth = () => {
     error,
     isLoading,
     handleLogin,
+    handleEmailRegister,
     handlePinSubmit,
     generateAnonCode,
   };
