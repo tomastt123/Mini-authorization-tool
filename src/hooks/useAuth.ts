@@ -14,6 +14,7 @@ export const useAuth = () => {
   const [anonCode, setAnonCode] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
 
   const navigate = useNavigate();
 
@@ -31,10 +32,10 @@ export const useAuth = () => {
     if (validateEmail(input)) {
       setIsLoading(true);
       try {
-        const res = await fetch("/api/send-pin", {
+        const res = await fetch("/v1/user/register/email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: input }),
+          body: JSON.stringify({ email: input, lang: "ru" }),
         });
 
         if (res.ok) {
@@ -52,10 +53,10 @@ export const useAuth = () => {
     } else if (validateCode(input)) {
       setIsLoading(true);
       try {
-        const res = await fetch("/api/login", {
+        const res = await fetch("/v1/auth/login/code", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code: input }),
+          body: JSON.stringify({ login_code: input }),
         });
 
         if (res.ok) {
@@ -86,14 +87,15 @@ export const useAuth = () => {
 
   setIsLoading(true);
     try {
-      const res = await fetch("/api/register", {
+      const res = await fetch("/v1/user/register/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: input }),
+        body: JSON.stringify({ email: input, lang: "ru" }),
       });
 
       if (res.ok) {
-        navigate("/auth/email");
+      localStorage.setItem("registeredEmail", input); // ✅ Save it here
+      navigate("/auth/email");
       } else if (res.status === 422) {
         setError("Invalid email format");
       } else {
@@ -107,44 +109,72 @@ export const useAuth = () => {
   };
 
 
-  const handlePinSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setError("");
+ const handlePinSubmit = async (e: FormEvent) => {
+  e.preventDefault();
+  setError("");
 
-    if (!validatePin(pin)) {
-      setError("PIN must be 6 digits");
-      return;
+  if (!validatePin(pin)) {
+    setError("PIN must be 6 digits");
+    return;
+  }
+
+  setIsLoading(true);
+
+  const storedEmail = localStorage.getItem("registeredEmail") || "";
+
+
+  try {
+    const res = await fetch("/v1/auth/login/email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: storedEmail,
+        pincode: Number(pin),
+      }),
+    });
+
+    if (res.ok) {
+      localStorage.removeItem("registeredEmail");
+      navigate("/");
+    } else if (res.status === 401) {
+      setError("Invalid PIN");
+    } else if (res.status === 422) {
+      setError("Invalid email format");
+    } else {
+      setError("PIN verification error");
     }
+  } catch {
+    setError("Network error");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
-    setIsLoading(true);
-    try {
-      const res = await fetch("/api/verify-pin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin }),
-      });
+  const generateAnonCode = async () => {
+  setIsLoading(true);
+  setError("");
 
-      if (res.ok) {
-        navigate("/");
-      } else if (res.status === 401) {
-        setError("Invalid PIN");
-      } else {
-        setError("PIN verification error");
-      }
-    } catch {
-      setError("Network error");
-    } finally {
-      setIsLoading(false);
+  try {
+    const response = await fetch("/v1/user/register/code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      setAnonCode(data.data.login_code);
+      localStorage.setItem("anonCode", data.data.login_code);
+      navigate("/reg/code");
+    } else {
+      setError("Failed to generate anonymous code");
     }
-  };
-
-  const generateAnonCode = () => {
-    const code = Array.from({ length: 16 }, () =>
-      Math.floor(Math.random() * 10)
-    ).join("");
-    setAnonCode(code);
-    navigate("/reg/code");
-  };
+  } catch {
+    setError("Network error");
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return {
     input,
@@ -158,5 +188,6 @@ export const useAuth = () => {
     handleEmailRegister,
     handlePinSubmit,
     generateAnonCode,
+    registeredEmail
   };
 };

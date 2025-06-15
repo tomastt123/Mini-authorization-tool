@@ -5,6 +5,13 @@ import AuthPage from "./pages/AuthPage";
 import RegPage from "./pages/RegPage";
 import CodePage from "./pages/CodePage";
 import EmailPinPage from "./pages/EmailPinPage";
+import "./styles/main.css";
+
+
+if (import.meta.env.DEV) {
+  const { worker } = await import("./mocks/browser");
+  worker.start();
+}
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Root element not found");

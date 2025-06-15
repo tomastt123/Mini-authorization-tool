@@ -1,8 +1,10 @@
 import type React from "react";
 
 type InputFieldProps = {
+  label?: string;
   type?: string;
   placeholder?: string;
+  maxLength?: number;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   disabled?: boolean;
